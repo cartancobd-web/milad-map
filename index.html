@@ -18,6 +18,9 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 .bottom{position:fixed;bottom:0;width:100%;display:flex;}
 .bottom button{flex:1;border-radius:0;}
 #suggestions button{background:#eee;color:#000;margin-top:5px;}
+.userBar{background:#e8f5e9;padding:8px;text-align:center;font-size:14px;}
+.logoutBtn{background:red;margin-top:5px;}
+.desc{margin-top:5px;font-size:14px;color:#333;}
 </style>
 </head>
 <body>
@@ -30,6 +33,11 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 
 <div id="main" style="display:none;padding-bottom:60px;">
 
+<div class="userBar">
+👤 <span id="userName"></span>
+<button class="logoutBtn" onclick="logout()">Logout</button>
+</div>
+
 <div id="createTab">
 <h3>Create Milad</h3>
 
@@ -40,11 +48,11 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 <input type="time" id="time"/>
 <input type="text" id="description" placeholder="Description"/>
 
-<button onclick="createMilad()">Post Milad</button>
+<button onclick="createMilad()">Create Milad</button>
 </div>
 
 <div id="checkTab" style="display:none;">
-<h3>Nearby Milad (5KM)</h3>
+<h3>Milad Check (5KM)</h3>
 <div id="list"></div>
 <div id="map"></div>
 </div>
@@ -52,14 +60,14 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 </div>
 
 <div class="bottom">
-<button onclick="showCreate()">Create</button>
-<button onclick="showCheck()">Check</button>
+<button onclick="showCreate()">Create Milad</button>
+<button onclick="showCheck()">Milad Check</button>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -88,22 +96,31 @@ userLng=pos.coords.longitude;
 }
 });
 
-/* AUTO LOGIN DETECT */
+/* AUTO LOGIN */
 onAuthStateChanged(auth,(user)=>{
 if(user){
-document.getElementById("loginSection").style.display="none";
-document.getElementById("main").style.display="block";
+loginSection.style.display="none";
+main.style.display="block";
+userName.innerText=user.displayName;
 loadMilads();
+}else{
+loginSection.style.display="block";
+main.style.display="none";
 }
 });
 
-/* GOOGLE LOGIN */
+/* LOGIN */
 window.googleLogin=async function(){
 const provider=new GoogleAuthProvider();
 await signInWithPopup(auth,provider);
 };
 
-/* CREATE MILAD */
+/* LOGOUT */
+window.logout=async function(){
+await signOut(auth);
+};
+
+/* CREATE */
 window.createMilad=async function(){
 const user=auth.currentUser;
 if(!user){alert("Login Required");return;}
@@ -115,12 +132,16 @@ time:time.value,
 desc:description.value,
 lat:userLat,
 lng:userLng,
-likes:0
+likes:0,
+user:user.displayName
 });
+
 alert("Milad Posted");
+mosqueName.value="";
+description.value="";
 };
 
-/* SHOW TAB */
+/* TAB */
 window.showCreate=function(){
 createTab.style.display="block";
 checkTab.style.display="none";
@@ -132,7 +153,7 @@ checkTab.style.display="block";
 loadMilads();
 }
 
-/* LOAD MILADS */
+/* LOAD */
 async function loadMilads(){
 const snapshot=await getDocs(collection(db,"milads"));
 list.innerHTML="";
@@ -144,8 +165,10 @@ const div=document.createElement("div");
 div.className="card";
 div.innerHTML=`
 <b>${data.mosque}</b><br>
-${data.date} ${data.time}<br>
-Distance: ${distance.toFixed(2)} KM<br>
+📅 ${data.date} ⏰ ${data.time}<br>
+👤 ${data.user}<br>
+📍 ${distance.toFixed(2)} KM<br>
+<div class="desc">${data.desc}</div>
 ❤️ ${data.likes}
 <button onclick="likeMilad('${docSnap.id}',${data.likes})">Like</button>
 `;
@@ -155,7 +178,7 @@ list.appendChild(div);
 initMap(snapshot);
 }
 
-/* ONE USER ONE LIKE */
+/* LIKE */
 window.likeMilad=async function(id,current){
 const user=auth.currentUser;
 if(!user){alert("Login Required");return;}
@@ -194,7 +217,7 @@ Math.sin(dLon/2)**2;
 return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-/* NEARBY MOSQUE SUGGEST */
+/* MOSQUE SUGGEST */
 async function loadNearbyMosques(){
 if(!userLat)return;
 const response=await fetch(
