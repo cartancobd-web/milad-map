@@ -11,6 +11,7 @@
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f9f4;}
 header{background:#0a5c36;color:white;padding:15px;text-align:center;font-size:18px;}
+header a{text-decoration:none;color:white;}
 button{background:#0a5c36;color:white;padding:10px;border:none;border-radius:8px;width:100%;margin-top:8px;}
 input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;}
 #map{height:300px;margin-top:10px;}
@@ -22,13 +23,14 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 .deleteBtn{background:#b71c1c;margin-top:5px;}
 .desc{margin-top:5px;font-size:14px;color:#333;}
 .filterBox{padding:10px;background:#fff;}
-#suggestions button{background:#eee;color:#000;}
 </style>
 </head>
 
 <body>
 
-<header>🕌 Milad Finder Bangladesh</header>
+<header>
+<a href="#">🕌 Milad Finder Bangladesh</a>
+</header>
 
 <div id="loginSection">
 <button onclick="googleLogin()">Login With Google</button>
@@ -43,11 +45,7 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 
 <div id="createTab" style="display:none;">
 <h3>Create Milad</h3>
-
 <input type="text" id="mosqueName" placeholder="Mosque Name"/>
-<div id="suggestions"></div>
-
-<input type="text" id="address" placeholder="Address Auto"/>
 <input type="date" id="date"/>
 <input type="time" id="time"/>
 <input type="text" id="description" placeholder="Description"/>
@@ -64,8 +62,8 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 
 <div id="list"></div>
 <div id="map"></div>
-</div>
 
+</div>
 </div>
 
 <div class="bottom">
@@ -80,35 +78,35 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signO
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "YOUR_KEY",
-authDomain: "YOUR_DOMAIN",
-projectId: "YOUR_ID",
-storageBucket: "YOUR_BUCKET",
-messagingSenderId: "YOUR_MSG_ID",
-appId: "YOUR_APP_ID",
+apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
+authDomain: "milad-4727b.firebaseapp.com",
+projectId: "milad-4727b",
+storageBucket: "milad-4727b.firebasestorage.app",
+messagingSenderId: "1088600725533",
+appId: "1:1088600725533:web:f4bdacb68606f846590ef4",
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth();
 const db = getFirestore();
 
-let userLat,userLng,map;
+let userLat = null;
+let userLng = null;
+let map;
 let markers=[];
 
 /* LOCATION */
 window.addEventListener("load",()=>{
 if(navigator.geolocation){
-navigator.geolocation.getCurrentPosition(async pos=>{
+navigator.geolocation.getCurrentPosition(pos=>{
 userLat=pos.coords.latitude;
 userLng=pos.coords.longitude;
 loadMilads();
-loadNearbyMosques();
-getAddress();
 });
 }
 });
 
-/* AUTO LOGIN STATE */
+/* LOGIN STATE */
 onAuthStateChanged(auth,(user)=>{
 if(user){
 loginSection.style.display="none";
@@ -133,16 +131,19 @@ await signOut(auth);
 
 /* TAB */
 window.showCreate=function(){
-if(!auth.currentUser){alert("Login Required");return;}
+if(!auth.currentUser){
+alert("Login Required");
+return;
+}
 createTab.style.display="block";
 checkTab.style.display="none";
-}
+};
 
 window.showCheck=function(){
 createTab.style.display="none";
 checkTab.style.display="block";
 loadMilads();
-}
+};
 
 /* CREATE */
 window.createMilad=async function(){
@@ -151,7 +152,6 @@ if(!user){alert("Login Required");return;}
 
 await addDoc(collection(db,"milads"),{
 mosque:mosqueName.value,
-address:address.value,
 date:date.value,
 time:time.value,
 desc:description.value,
@@ -162,10 +162,13 @@ user:user.displayName,
 uid:user.uid
 });
 alert("Milad Posted");
-}
+};
 
 /* LOAD MILADS (Login ছাড়া কাজ করবে) */
 window.loadMilads=async function(){
+
+if(!userLat) return;
+
 const snapshot=await getDocs(collection(db,"milads"));
 list.innerHTML="";
 const selectedDate=filterDate.value;
@@ -176,27 +179,27 @@ const distance=getDistance(userLat,userLng,data.lat,data.lng);
 
 if(distance<=5 && (!selectedDate || selectedDate===data.date)){
 
-let deleteBtn="";
+let deleteButton="";
 if(auth.currentUser && auth.currentUser.uid===data.uid){
-deleteBtn=`<button class="deleteBtn" onclick="deleteMilad('${docSnap.id}')">Delete</button>`;
+deleteButton=`<button class="deleteBtn" onclick="deleteMilad('${docSnap.id}')">Delete</button>`;
 }
 
 const div=document.createElement("div");
 div.className="card";
 div.innerHTML=`
 <b>${data.mosque}</b><br>
-📍 ${data.address}<br>
 📅 ${data.date} ⏰ ${data.time}<br>
 👤 ${data.user}<br>
-📏 ${distance.toFixed(2)} KM<br>
+📍 ${distance.toFixed(2)} KM<br>
 <div class="desc">${data.desc}</div>
 ❤️ ${data.likes}
 <button onclick="likeMilad('${docSnap.id}',${data.likes})">Like</button>
-${deleteBtn}
+${deleteButton}
 `;
 list.appendChild(div);
 }
 });
+
 initMap(snapshot);
 };
 
@@ -210,23 +213,34 @@ loadMilads();
 
 /* LIKE */
 window.likeMilad=async function(id,current){
-if(!auth.currentUser){alert("Login Required");return;}
-const likeId=id+"_"+auth.currentUser.uid;
+const user=auth.currentUser;
+if(!user){alert("Login Required");return;}
+
+const likeId=id+"_"+user.uid;
 const likeRef=doc(db,"likes",likeId);
-if((await getDoc(likeRef)).exists()){alert("Already Liked");return;}
-await setDoc(likeRef,{miladId:id});
+const likeSnap=await getDoc(likeRef);
+
+if(likeSnap.exists()){
+alert("Already Liked");
+return;
+}
+
+await setDoc(likeRef,{miladId:id,userId:user.uid});
 await updateDoc(doc(db,"milads",id),{likes:current+1});
 loadMilads();
 };
 
 /* MAP */
 function initMap(snapshot){
+
 if(!map){
 map=L.map('map').setView([userLat,userLng],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 }
+
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
+
 snapshot.forEach(docSnap=>{
 const data=docSnap.data();
 if(getDistance(userLat,userLng,data.lat,data.lng)<=5){
@@ -247,34 +261,12 @@ Math.sin(dLon/2)**2;
 return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-/* MOSQUE AUTO SUGGEST */
-async function loadNearbyMosques(){
-const response=await fetch(
-`https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${userLat},${userLng});out;`
-);
-const data=await response.json();
-suggestions.innerHTML="";
-data.elements.slice(0,8).forEach(m=>{
-if(m.tags && m.tags.name){
-const btn=document.createElement("button");
-btn.innerText=m.tags.name;
-btn.onclick=()=>{
-mosqueName.value=m.tags.name;
-suggestions.innerHTML="";
-};
-suggestions.appendChild(btn);
-}
-});
-}
-
-/* AUTO ADDRESS */
-async function getAddress(){
-const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLng}`);
-const data=await res.json();
-address.value=data.display_name;
-}
-
 </script>
+
+<footer style="text-align:center;padding:20px;">
+Created By Tariqul Islam<br>
+<a href="https://facebook.com/3tariqul" target="_blank">Facebook Check</a>
+</footer>
 
 </body>
 </html>
