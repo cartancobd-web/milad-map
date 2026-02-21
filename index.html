@@ -4,22 +4,23 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>🕌 Milad Finder Bangladesh</title>
-</head>
-
-<body>
-
-<h4 style="text-align:center; font-size:18px; margin:10px 0;">
-  <a href="https://cartancobd-web.github.io/milad-map/" 
-     style="text-decoration:none; color:black;">
-     🕌 Milad Finder Bangladesh
-  </a>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f9f4;}
-header{background:#0a5c36;color:white;padding:15px;text-align:center;font-size:20px;}
+header{
+  background:#0a5c36;
+  color:white;
+  padding:15px;
+  text-align:center;
+  font-size:18px;
+}
+header a{
+  text-decoration:none;
+  color:white;
+}
 button{background:#0a5c36;color:white;padding:10px;border:none;border-radius:8px;width:100%;margin-top:8px;}
 input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;}
 #map{height:300px;margin-top:10px;}
@@ -33,9 +34,14 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 .filterBox{padding:10px;background:#fff;}
 </style>
 </head>
+
 <body>
 
-<header>🕌 Milad Finder</header>
+<header>
+  <a href="https://cartancobd-web.github.io/milad-map/">
+    🕌 Milad Finder Bangladesh
+  </a>
+</header>
 
 <div id="loginSection">
 <button onclick="googleLogin()">Login With Google</button>
@@ -255,6 +261,7 @@ Created By Tariqul Islam<br>
 
 </body>
 </html>
+
 
 
 
