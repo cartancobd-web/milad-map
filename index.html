@@ -1,238 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🕌 Milad Map Bangladesh</title>
+  <title>Milad Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css">
 
-<style>
-body{
-margin:0;
-font-family:'Segoe UI',sans-serif;
-background:linear-gradient(180deg,#063d1e,#0d5c2a);
-color:white;
-padding:10px;
-}
-h1{text-align:center;color:gold;}
-.tabs{display:flex;gap:10px;margin-bottom:10px;}
-.tabbtn{
-flex:1;padding:10px;border:none;border-radius:10px;
-background:gold;font-weight:bold;cursor:pointer;
-}
-.tabbtn.active{background:#ffd700;}
-.tabcontent{display:none;}
-.tabcontent.active{display:block;}
-#map,#nearbyMap{
-height:320px;border-radius:15px;margin-bottom:15px;
-}
-.card{
-background:white;color:black;padding:15px;
-border-radius:15px;margin-bottom:15px;
-box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-button{
-padding:8px 12px;background:gold;border:none;
-border-radius:8px;font-weight:bold;cursor:pointer;
-}
-input{
-width:100%;padding:10px;margin-bottom:10px;border-radius:8px;
-border:1px solid #ccc;
-}
-.suggest{
-background:white;color:black;max-height:120px;
-overflow-y:auto;border-radius:8px;
-}
-.suggest div{
-padding:6px;cursor:pointer;
-}
-.suggest div:hover{
-background:#eee;
-}
-</style>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 
 <body>
 
-<h1>🕌 Milad Map Bangladesh</h1>
-<button id="loginBtn">Login with Google</button>
-<p id="userInfo"></p>
+<header>
+  <h2>🌙 Milad Finder</h2>
+  <button onclick="login()">Google Login</button>
+</header>
 
 <div class="tabs">
-<button class="tabbtn active" onclick="openTab('postTab',this)">➕ Post</button>
-<button class="tabbtn" onclick="openTab('nearbyTab',this)">📍 Nearby</button>
+  <button onclick="showCreate()">Create Milad</button>
+  <button onclick="showCheck()">Milad Check</button>
 </div>
 
-<div id="postTab" class="tabcontent active">
+<!-- CREATE TAB -->
+<div id="createTab">
+  <h3>Create Milad</h3>
 
-<div id="map"></div>
+  <select id="mosqueList"></select>
+  <input type="text" id="customMosque" placeholder="Or Enter Mosque Name">
 
-<div class="card">
-<h3>মিলাদ পোস্ট করুন</h3>
-<form id="postForm">
+  <input type="date" id="date">
+  <input type="time" id="time">
+  <textarea id="desc" placeholder="Description"></textarea>
 
-<input type="text" id="mosque" placeholder="মসজিদের নাম লিখুন">
-<div id="suggestBox" class="suggest"></div>
-
-<input type="text" id="district" placeholder="জেলা (Auto)">
-<input type="text" id="food" placeholder="কি খাওয়া দিবে">
-<input type="date" id="date">
-<input type="time" id="time">
-
-<button type="submit">Publish</button>
-</form>
+  <button onclick="saveMilad()">Post Milad</button>
 </div>
 
+<!-- CHECK TAB -->
+<div id="checkTab" style="display:none;">
+  <h3>Nearby Milad (5 KM)</h3>
+  <div id="miladList"></div>
+  <div id="map"></div>
 </div>
 
-<div id="nearbyTab" class="tabcontent">
-<div id="nearbyMap"></div>
-</div>
+<footer>
+  Developed By Tariqul Islam |
+  <a href="https://facebook.com/3tariqul" target="_blank">Facebook</a>
+</footer>
 
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-const firebaseConfig = {
-apiKey:"YOUR_KEY",
-authDomain:"YOUR_DOMAIN",
-projectId:"YOUR_PROJECT",
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-const auth=getAuth(app);
-const provider=new GoogleAuthProvider();
-
-const now=new Date();
-date.value=now.toISOString().split('T')[0];
-time.value=now.getHours().toString().padStart(2,'0')+":"+
-now.getMinutes().toString().padStart(2,'0');
-
-let userLat,userLon;
-let map,nearbyMap,circle;
-
-navigator.geolocation.getCurrentPosition(async pos=>{
-userLat=pos.coords.latitude;
-userLon=pos.coords.longitude;
-
-map=L.map('map').setView([userLat,userLon],14);
-nearbyMap=L.map('nearbyMap').setView([userLat,userLon],14);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(nearbyMap);
-
-L.marker([userLat,userLon]).addTo(map);
-L.marker([userLat,userLon]).addTo(nearbyMap);
-
-circle=L.circle([userLat,userLon],{
-radius:5000,
-color:'gold',
-fillOpacity:0.1
-}).addTo(nearbyMap);
-
-const geo=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLon}`);
-const geoData=await geo.json();
-district.value=geoData.address.state_district||"";
-
-loadPosts();
-});
-
-function getDistance(lat1,lon1,lat2,lon2){
-const R=6371;
-const dLat=(lat2-lat1)*Math.PI/180;
-const dLon=(lon2-lon1)*Math.PI/180;
-const a=Math.sin(dLat/2)**2+
-Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)**2;
-return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function loadPosts(){
-onSnapshot(collection(db,"milads"), snapshot=>{
-nearbyMap.eachLayer(l=>{
-if(l instanceof L.Marker) nearbyMap.removeLayer(l);
-});
-L.marker([userLat,userLon]).addTo(nearbyMap);
-
-snapshot.forEach(docSnap=>{
-const d=docSnap.data();
-const dist=getDistance(userLat,userLon,d.lat,d.lon);
-if(dist<=5){
-const marker=L.marker([d.lat,d.lon]).addTo(nearbyMap);
-marker.bindPopup(`
-<b>${d.mosque}</b><br>
-📍 ${dist.toFixed(2)} km দূরে<br>
-❤️ ${d.likes||0}
-<button onclick="likePost('${docSnap.id}')">Like</button>
-`);
-}
-});
-});
-}
-
-window.likePost=async function(id){
-await updateDoc(doc(db,"milads",id),{
-likes:increment(1)
-});
-};
-
-loginBtn.onclick=async()=>{
-try{
-const res=await signInWithPopup(auth,provider);
-userInfo.innerText="Logged in: "+res.user.displayName;
-}catch(e){alert(e.message);}
-};
-
-postForm.addEventListener("submit",async e=>{
-e.preventDefault();
-if(!auth.currentUser){alert("Login করুন");return;}
-
-await addDoc(collection(db,"milads"),{
-mosque:mosque.value,
-district:district.value,
-food:food.value,
-date:date.value,
-time:time.value,
-lat:userLat,
-lon:userLon,
-likes:0
-});
-alert("Published!");
-});
-
-mosque.addEventListener("input",async()=>{
-if(mosque.value.length<3)return;
-const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${mosque.value}&countrycodes=bd`);
-const data=await res.json();
-suggestBox.innerHTML="";
-data.slice(0,5).forEach(place=>{
-const div=document.createElement("div");
-div.innerText=place.display_name;
-div.onclick=()=>{
-mosque.value=place.display_name;
-suggestBox.innerHTML="";
-};
-suggestBox.appendChild(div);
-});
-});
-
-</script>
-
-<script>
-function openTab(id,btn){
-document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('active'));
-document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-btn.classList.add('active');
-}
-</script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
