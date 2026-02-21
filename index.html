@@ -17,51 +17,37 @@ color:white;
 padding:10px;
 }
 
-h1{
-text-align:center;
-color:gold;
-margin-bottom:5px;
-}
+h1{text-align:center;color:gold;}
+.top{text-align:center;margin-bottom:10px;}
 
-.top{
-text-align:center;
-margin-bottom:10px;
+.tabs{display:flex;gap:10px;margin-bottom:10px;}
+.tabbtn{
+flex:1;padding:10px;border:none;border-radius:10px;
+background:gold;font-weight:bold;cursor:pointer;
 }
+.tabbtn.active{background:#ffd700;}
+.tabcontent{display:none;}
+.tabcontent.active{display:block;}
 
-#map{
-height:320px;
-border-radius:15px;
-margin-bottom:15px;
+#map,#nearbyMap{
+height:320px;border-radius:15px;margin-bottom:15px;
 }
 
 .card{
-background:white;
-color:black;
-padding:15px;
-border-radius:15px;
-margin-bottom:15px;
+background:white;color:black;padding:15px;
+border-radius:15px;margin-bottom:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
 
 button{
-padding:10px;
-background:gold;
-border:none;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
+padding:8px 12px;background:gold;border:none;
+border-radius:8px;font-weight:bold;cursor:pointer;
 }
 
-select,input{
-width:100%;
-padding:10px;
-margin-bottom:10px;
-border-radius:8px;
-border:1px solid #ccc;
-}
+input{width:100%;padding:10px;margin-bottom:10px;border-radius:8px;}
 
 @media(max-width:600px){
-#map{height:250px;}
+#map,#nearbyMap{height:250px;}
 }
 </style>
 </head>
@@ -74,19 +60,20 @@ border:1px solid #ccc;
 <p id="userInfo"></p>
 </div>
 
-<div id="map"></div>
-
-<div class="card">
-<h3>নিকটবর্তী মসজিদ নির্বাচন করুন</h3>
-<select id="mosqueSelect">
-<option value="">মসজিদ লোড হচ্ছে...</option>
-</select>
+<div class="tabs">
+<button class="tabbtn active" onclick="openTab('postTab',this)">➕ Post</button>
+<button class="tabbtn" onclick="openTab('nearbyTab',this)">📍 Nearby</button>
 </div>
+
+<div id="postTab" class="tabcontent active">
+
+<div id="map"></div>
 
 <div class="card">
 <h3>মিলাদ পোস্ট করুন</h3>
 <form id="postForm">
-<input type="text" id="district" placeholder="জেলা" required>
+<input type="text" id="mosque" placeholder="মসজিদের নাম" required>
+<input type="text" id="district" placeholder="জেলা (Auto)" required>
 <input type="text" id="food" placeholder="কি খাওয়া দিবে" required>
 <input type="date" id="date" required>
 <input type="time" id="time" required>
@@ -94,21 +81,25 @@ border:1px solid #ccc;
 </form>
 </div>
 
+</div>
+
+<div id="nearbyTab" class="tabcontent">
+<div id="nearbyMap"></div>
+</div>
+
 <script type="module">
 
-// Firebase Import
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Firebase Config
 const firebaseConfig = {
-apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
-authDomain: "milad-4727b.firebaseapp.com",
-projectId: "milad-4727b",
-storageBucket: "milad-4727b.firebasestorage.app",
-messagingSenderId: "1088600725533",
-appId: "1:1088600725533:web:f4bdacb68606f846590ef4"
+  apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
+  authDomain: "milad-4727b.firebaseapp.com",
+  projectId: "milad-4727b",
+  storageBucket: "milad-4727b.firebasestorage.app",
+  messagingSenderId: "1088600725533",
+  appId: "1:1088600725533:web:f4bdacb68606f846590ef4",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -116,106 +107,143 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Auto Date & Time
 const now = new Date();
-document.getElementById("date").value = now.toISOString().split('T')[0];
-document.getElementById("time").value =
+date.value = now.toISOString().split('T')[0];
+time.value =
 now.getHours().toString().padStart(2,'0') + ":" +
 now.getMinutes().toString().padStart(2,'0');
 
 let userLat,userLon;
-let map;
+let map, nearbyMap;
+let circle;
 
-// Get Location
+function getDistance(lat1,lon1,lat2,lon2){
+const R=6371;
+const dLat=(lat2-lat1)*Math.PI/180;
+const dLon=(lon2-lon1)*Math.PI/180;
+const a=Math.sin(dLat/2)**2+
+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)**2;
+return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
 navigator.geolocation.getCurrentPosition(async pos=>{
 
-userLat = pos.coords.latitude;
-userLon = pos.coords.longitude;
+userLat=pos.coords.latitude;
+userLon=pos.coords.longitude;
 
-map = L.map('map').setView([userLat,userLon],14);
+map=L.map('map').setView([userLat,userLon],14);
+nearbyMap=L.map('nearbyMap').setView([userLat,userLon],14);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 .addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(nearbyMap);
 
-L.marker([userLat,userLon])
-.addTo(map)
-.bindPopup("আপনার লোকেশন")
-.openPopup();
+L.marker([userLat,userLon]).addTo(map).bindPopup("আপনার লোকেশন");
+L.marker([userLat,userLon]).addTo(nearbyMap);
 
-loadNearbyMosques();
+circle=L.circle([userLat,userLon],{
+radius:5000,
+color:'gold',
+fillOpacity:0.1
+}).addTo(nearbyMap);
 
-},()=>{
-alert("লোকেশন অন করুন");
+const geoRes=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLon}`);
+const geoData=await geoRes.json();
+district.value=geoData.address.state_district || geoData.address.state || "";
+
+loadPosts();
+
 });
 
-// Overpass API Mosque Fetch
-async function loadNearbyMosques(){
+function loadPosts(){
 
-const url = `
-https://overpass-api.de/api/interpreter?data=
-[out:json];
-node["amenity"="place_of_worship"]["religion"="muslim"]
-(around:3000,${userLat},${userLon});
-out;`;
+onSnapshot(collection(db,"milads"), snapshot=>{
 
-const res = await fetch(url);
-const data = await res.json();
-
-const select = document.getElementById("mosqueSelect");
-select.innerHTML = "<option value=''>মসজিদ নির্বাচন করুন</option>";
-
-data.elements.forEach(m=>{
-if(m.tags && m.tags.name){
-const opt = document.createElement("option");
-opt.value = m.tags.name;
-opt.textContent = m.tags.name;
-select.appendChild(opt);
-
-L.marker([m.lat,m.lon])
-.addTo(map)
-.bindPopup("🕌 "+m.tags.name);
+nearbyMap.eachLayer(layer=>{
+if(layer instanceof L.Marker && layer.getLatLng){
+nearbyMap.removeLayer(layer);
 }
 });
 
+L.marker([userLat,userLon]).addTo(nearbyMap);
+
+let topLiked=0;
+let topDoc=null;
+
+snapshot.forEach(docSnap=>{
+const d=docSnap.data();
+if((d.likes||0)>topLiked){
+topLiked=d.likes;
+topDoc=d;
+}
+});
+
+snapshot.forEach(docSnap=>{
+const d=docSnap.data();
+const distance=getDistance(userLat,userLon,d.lat,d.lon);
+
+if(distance<=5){
+
+const marker=L.marker([d.lat,d.lon]).addTo(nearbyMap);
+
+let trending="";
+if(d===topDoc){
+trending="🔥 Top Trending<br>";
 }
 
-// Google Login
-document.getElementById("loginBtn")
-.addEventListener("click",async()=>{
+marker.bindPopup(`
+${trending}
+<b>${d.mosque}</b><br>
+📍 ${distance.toFixed(2)} km দূরে<br>
+❤️ ${d.likes||0}
+<button onclick="likePost('${docSnap.id}')">Like</button>
+`);
+}
+});
+});
+}
+
+window.likePost=async function(id){
+const ref=doc(db,"milads",id);
+await updateDoc(ref,{likes:increment(1)});
+};
+
+loginBtn.onclick=async ()=>{
 try{
-const result = await signInWithPopup(auth,provider);
-document.getElementById("userInfo").innerText =
-"Logged in: "+result.user.displayName;
-}catch(e){
-alert(e.message);
-}
-});
+const result=await signInWithPopup(auth,provider);
+userInfo.innerText="Logged in: "+result.user.displayName;
+}catch(e){alert(e.message);}
+};
 
-// Post Submit
-document.getElementById("postForm")
-.addEventListener("submit",async e=>{
+postForm.addEventListener("submit",async e=>{
 e.preventDefault();
-
-if(!auth.currentUser){
-alert("Login করতে হবে");
-return;
-}
+if(!auth.currentUser){alert("Login করুন");return;}
 
 await addDoc(collection(db,"milads"),{
-mosque: mosqueSelect.value,
-district: district.value,
-food: food.value,
-date: date.value,
-time: time.value,
-lat: userLat,
-lon: userLon,
-user: auth.currentUser.displayName
+mosque:mosque.value,
+district:district.value,
+food:food.value,
+date:date.value,
+time:time.value,
+lat:userLat,
+lon:userLon,
+likes:0,
+user:auth.currentUser.displayName
+});
+alert("Published!");
 });
 
-alert("Post Published!");
-location.reload();
-});
+</script>
 
+<script>
+function openTab(tabId,btn){
+document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+document.getElementById(tabId).classList.add('active');
+btn.classList.add('active');
+}
 </script>
 
 </body>
