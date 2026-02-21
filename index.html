@@ -1,201 +1,91 @@
 <!DOCTYPE html>
-<div class="topbar">
-  <h1>🕌 Milad Map Bangladesh</h1>
-  <button id="loginBtn">Login with Google</button>
-  <p id="userInfo"></p>
-</div>
-
-
 <html>
 <head>
-<meta charset="utf-8" />
-<title>Milad Map Bangladesh</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🕌 Milad Map Bangladesh</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  margin:0;
-  padding:10px;
-  background:linear-gradient(to bottom,#0b3d0b,#145214);
-  color:white;
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(180deg,#063d1e,#0d5c2a);
+color:white;
+padding:10px;
 }
 
-h1 {
-  text-align:center;
-  color:gold;
+h1{
+text-align:center;
+color:gold;
+margin-bottom:5px;
 }
 
-#map {
-  height: 350px;
-  margin-bottom:20px;
-  border-radius:15px;
+.top{
+text-align:center;
+margin-bottom:10px;
 }
 
-.card {
-  background:white;
-  color:black;
-  padding:15px;
-  border-radius:15px;
-  margin-bottom:15px;
+#map{
+height:320px;
+border-radius:15px;
+margin-bottom:15px;
 }
 
-button {
-  padding:10px 15px;
-  border:none;
-  background:gold;
-  color:black;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
+.card{
+background:white;
+color:black;
+padding:15px;
+border-radius:15px;
+margin-bottom:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
 
-button:hover {
-  background:#ffd700;
+button{
+padding:10px;
+background:gold;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
 }
 
-select,input {
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:8px;
-  border:1px solid #ccc;
+select,input{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+border:1px solid #ccc;
 }
 
-.topbar {
-  text-align:center;
-  margin-bottom:15px;
-}
-
-/* 📱 Mobile Responsive */
-@media (max-width:600px) {
-
-  body {
-    padding:5px;
-  }
-
-  #map {
-    height:250px;
-  }
-
-  h1 {
-    font-size:20px;
-  }
-
-  .card {
-    padding:10px;
-  }
-
+@media(max-width:600px){
+#map{height:250px;}
 }
 </style>
 </head>
+
 <body>
 
-<h2>Milad Map Bangladesh</h2>
-
-<div class="card">
-<select id="districtFilter">
-<option value="">সব জেলা</option>
-
-<optgroup label="Dhaka Division">
-<option>Dhaka</option>
-<option>Gazipur</option>
-<option>Kishoreganj</option>
-<option>Manikganj</option>
-<option>Munshiganj</option>
-<option>Narayanganj</option>
-<option>Narsingdi</option>
-<option>Tangail</option>
-<option>Faridpur</option>
-<option>Gopalganj</option>
-<option>Madaripur</option>
-<option>Rajbari</option>
-<option>Shariatpur</option>
-</optgroup>
-
-<optgroup label="Chattogram Division">
-<option>Chattogram</option>
-<option>Cox's Bazar</option>
-<option>Bandarban</option>
-<option>Rangamati</option>
-<option>Khagrachhari</option>
-<option>Feni</option>
-<option>Noakhali</option>
-<option>Lakshmipur</option>
-<option>Cumilla</option>
-<option>Brahmanbaria</option>
-<option>Chandpur</option>
-</optgroup>
-
-<optgroup label="Rajshahi Division">
-<option>Rajshahi</option>
-<option>Natore</option>
-<option>Naogaon</option>
-<option>Chapainawabganj</option>
-<option>Pabna</option>
-<option>Bogura</option>
-<option>Joypurhat</option>
-<option>Sirajganj</option>
-</optgroup>
-
-<optgroup label="Khulna Division">
-<option>Khulna</option>
-<option>Bagerhat</option>
-<option>Satkhira</option>
-<option>Jessore</option>
-<option>Narail</option>
-<option>Magura</option>
-<option>Kushtia</option>
-<option>Chuadanga</option>
-<option>Meherpur</option>
-<option>Jhenaidah</option>
-</optgroup>
-
-<optgroup label="Barishal Division">
-<option>Barishal</option>
-<option>Bhola</option>
-<option>Patuakhali</option>
-<option>Barguna</option>
-<option>Jhalokathi</option>
-<option>Pirojpur</option>
-</optgroup>
-
-<optgroup label="Sylhet Division">
-<option>Sylhet</option>
-<option>Moulvibazar</option>
-<option>Habiganj</option>
-<option>Sunamganj</option>
-</optgroup>
-
-<optgroup label="Rangpur Division">
-<option>Rangpur</option>
-<option>Dinajpur</option>
-<option>Kurigram</option>
-<option>Gaibandha</option>
-<option>Nilphamari</option>
-<option>Lalmonirhat</option>
-<option>Panchagarh</option>
-<option>Thakurgaon</option>
-</optgroup>
-
-<optgroup label="Mymensingh Division">
-<option>Mymensingh</option>
-<option>Jamalpur</option>
-<option>Netrokona</option>
-<option>Sherpur</option>
-</optgroup>
-
-</select>
+<div class="top">
+<h1>🕌 Milad Map Bangladesh</h1>
+<button id="loginBtn">Login with Google</button>
+<p id="userInfo"></p>
 </div>
 
 <div id="map"></div>
 
 <div class="card">
+<h3>নিকটবর্তী মসজিদ নির্বাচন করুন</h3>
+<select id="mosqueSelect">
+<option value="">মসজিদ লোড হচ্ছে...</option>
+</select>
+</div>
+
+<div class="card">
 <h3>মিলাদ পোস্ট করুন</h3>
 <form id="postForm">
-<input type="text" id="mosque" placeholder="মসজিদের নাম" required>
 <input type="text" id="district" placeholder="জেলা" required>
 <input type="text" id="food" placeholder="কি খাওয়া দিবে" required>
 <input type="date" id="date" required>
@@ -206,123 +96,127 @@ select,input {
 
 <script type="module">
 
+// Firebase Import
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// Firebase Config
 const firebaseConfig = {
-  apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
-  authDomain: "milad-4727b.firebaseapp.com",
-  projectId: "milad-4727b",
-  storageBucket: "milad-4727b.firebasestorage.app",
-  messagingSenderId: "1088600725533",
-  appId: "1:1088600725533:web:f4bdacb68606f846590ef4"
+apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
+authDomain: "milad-4727b.firebaseapp.com",
+projectId: "milad-4727b",
+storageBucket: "milad-4727b.firebasestorage.app",
+messagingSenderId: "1088600725533",
+appId: "1:1088600725533:web:f4bdacb68606f846590ef4"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
 const provider = new GoogleAuthProvider();
 
-let userLat, userLon;
+// Auto Date & Time
+const now = new Date();
+document.getElementById("date").value = now.toISOString().split('T')[0];
+document.getElementById("time").value =
+now.getHours().toString().padStart(2,'0') + ":" +
+now.getMinutes().toString().padStart(2,'0');
+
+let userLat,userLon;
 let map;
 
-navigator.geolocation.getCurrentPosition(function(position) {
+// Get Location
+navigator.geolocation.getCurrentPosition(async pos=>{
 
-  userLat = position.coords.latitude;
-  userLon = position.coords.longitude;
+userLat = pos.coords.latitude;
+userLon = pos.coords.longitude;
 
-  map = L.map('map').setView([userLat, userLon], 13);
+map = L.map('map').setView([userLat,userLon],14);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(map);
 
-  L.marker([userLat, userLon]).addTo(map)
-    .bindPopup("আপনার লোকেশন").openPopup();
+L.marker([userLat,userLon])
+.addTo(map)
+.bindPopup("আপনার লোকেশন")
+.openPopup();
 
-  loadPosts();
+loadNearbyMosques();
 
-}, function(){
-  alert("লোকেশন অন করুন");
+},()=>{
+alert("লোকেশন অন করুন");
 });
 
-document.getElementById("loginBtn").onclick = async function(){
-  const result = await signInWithPopup(auth, provider);
-  document.getElementById("userInfo").innerText = "Logged in: " + result.user.displayName;
-};
+// Overpass API Mosque Fetch
+async function loadNearbyMosques(){
 
-function distance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLon = (lon2-lon1) * Math.PI/180;
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-            Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) *
-            Math.sin(dLon/2)*Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+const url = `
+https://overpass-api.de/api/interpreter?data=
+[out:json];
+node["amenity"="place_of_worship"]["religion"="muslim"]
+(around:3000,${userLat},${userLon});
+out;`;
+
+const res = await fetch(url);
+const data = await res.json();
+
+const select = document.getElementById("mosqueSelect");
+select.innerHTML = "<option value=''>মসজিদ নির্বাচন করুন</option>";
+
+data.elements.forEach(m=>{
+if(m.tags && m.tags.name){
+const opt = document.createElement("option");
+opt.value = m.tags.name;
+opt.textContent = m.tags.name;
+select.appendChild(opt);
+
+L.marker([m.lat,m.lon])
+.addTo(map)
+.bindPopup("🕌 "+m.tags.name);
 }
-
-async function loadPosts() {
-
-  const snapshot = await getDocs(collection(db, "milads"));
-  snapshot.forEach((doc) => {
-
-    const data = doc.data();
-
-    const km = distance(userLat,userLon,data.lat,data.lon);
-
-    const selectedDistrict = document.getElementById("districtFilter").value;
-
-    if(km <= 5 && (selectedDistrict=="" || selectedDistrict==data.district)) {
-
-      L.marker([data.lat, data.lon]).addTo(map)
-        .bindPopup(
-          "<b>"+data.mosque+"</b><br>"+
-          "জেলা: "+data.district+"<br>"+
-          "খাবার: "+data.food+"<br>"+
-          "তারিখ: "+data.date+"<br>"+
-          "সময়: "+data.time
-        );
-    }
-  });
-}
-
-document.getElementById("districtFilter").addEventListener("change", function(){
-  map.eachLayer(function(layer){
-    if(layer instanceof L.Marker && !layer.getPopup().getContent().includes("আপনার লোকেশন")){
-      map.removeLayer(layer);
-    }
-  });
-  loadPosts();
 });
 
-document.getElementById("postForm").addEventListener("submit", async function(e){
-  e.preventDefault();
+}
 
-  if(!auth.currentUser){
-    alert("Login করতে হবে");
-    return;
-  }
+// Google Login
+document.getElementById("loginBtn")
+.addEventListener("click",async()=>{
+try{
+const result = await signInWithPopup(auth,provider);
+document.getElementById("userInfo").innerText =
+"Logged in: "+result.user.displayName;
+}catch(e){
+alert(e.message);
+}
+});
 
-  await addDoc(collection(db, "milads"), {
-    mosque: mosque.value,
-    district: district.value,
-    food: food.value,
-    date: date.value,
-    time: time.value,
-    lat: userLat,
-    lon: userLon,
-    user: auth.currentUser.displayName
-  });
+// Post Submit
+document.getElementById("postForm")
+.addEventListener("submit",async e=>{
+e.preventDefault();
 
-  alert("Post Published!");
-  location.reload();
+if(!auth.currentUser){
+alert("Login করতে হবে");
+return;
+}
+
+await addDoc(collection(db,"milads"),{
+mosque: mosqueSelect.value,
+district: district.value,
+food: food.value,
+date: date.value,
+time: time.value,
+lat: userLat,
+lon: userLon,
+user: auth.currentUser.displayName
+});
+
+alert("Post Published!");
+location.reload();
 });
 
 </script>
 
 </body>
-
 </html>
-
-
-
