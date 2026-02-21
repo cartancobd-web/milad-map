@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Milad Map Bangladesh</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+body { font-family: Arial; margin:0; padding:10px; background:#f4f4f4;}
+#map { height: 400px; margin-bottom:20px; border-radius:10px;}
+.card { background:white; padding:15px; border-radius:10px; margin-bottom:15px;}
+button { padding:8px 15px; border:none; background:green; color:white; border-radius:5px;}
+select,input { width:100%; padding:8px; margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<h2>Milad Map Bangladesh</h2>
+
+<div class="card">
+<button id="loginBtn">Google Login</button>
+<p id="userInfo"></p>
+</div>
+
+<div class="card">
+<select id="districtFilter">
+<option value="">সব জেলা</option>
+<option>Dhaka</option>
+<option>Chattogram</option>
+<option>Rajshahi</option>
+<option>Khulna</option>
+<option>Barishal</option>
+<option>Sylhet</option>
+<option>Rangpur</option>
+<option>Mymensingh</option>
+</select>
+</div>
+
+<div id="map"></div>
+
+<div class="card">
+<h3>মিলাদ পোস্ট করুন</h3>
+<form id="postForm">
+<input type="text" id="mosque" placeholder="মসজিদের নাম" required>
+<input type="text" id="district" placeholder="জেলা" required>
+<input type="text" id="food" placeholder="কি খাওয়া দিবে" required>
+<input type="date" id="date" required>
+<input type="time" id="time" required>
+<button type="submit">Publish</button>
+</form>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MSG_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const provider = new GoogleAuthProvider();
+
+let userLat, userLon;
+let map;
+
+navigator.geolocation.getCurrentPosition(function(position) {
+
+  userLat = position.coords.latitude;
+  userLon = position.coords.longitude;
+
+  map = L.map('map').setView([userLat, userLon], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  L.marker([userLat, userLon]).addTo(map)
+    .bindPopup("আপনার লোকেশন").openPopup();
+
+  loadPosts();
+
+}, function(){
+  alert("লোকেশন অন করুন");
+});
+
+document.getElementById("loginBtn").onclick = async function(){
+  const result = await signInWithPopup(auth, provider);
+  document.getElementById("userInfo").innerText = "Logged in: " + result.user.displayName;
+};
+
+function distance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function loadPosts() {
+
+  const snapshot = await getDocs(collection(db, "milads"));
+  snapshot.forEach((doc) => {
+
+    const data = doc.data();
+
+    const km = distance(userLat,userLon,data.lat,data.lon);
+
+    const selectedDistrict = document.getElementById("districtFilter").value;
+
+    if(km <= 5 && (selectedDistrict=="" || selectedDistrict==data.district)) {
+
+      L.marker([data.lat, data.lon]).addTo(map)
+        .bindPopup(
+          "<b>"+data.mosque+"</b><br>"+
+          "জেলা: "+data.district+"<br>"+
+          "খাবার: "+data.food+"<br>"+
+          "তারিখ: "+data.date+"<br>"+
+          "সময়: "+data.time
+        );
+    }
+  });
+}
+
+document.getElementById("districtFilter").addEventListener("change", function(){
+  map.eachLayer(function(layer){
+    if(layer instanceof L.Marker && !layer.getPopup().getContent().includes("আপনার লোকেশন")){
+      map.removeLayer(layer);
+    }
+  });
+  loadPosts();
+});
+
+document.getElementById("postForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+
+  if(!auth.currentUser){
+    alert("Login করতে হবে");
+    return;
+  }
+
+  await addDoc(collection(db, "milads"), {
+    mosque: mosque.value,
+    district: district.value,
+    food: food.value,
+    date: date.value,
+    time: time.value,
+    lat: userLat,
+    lon: userLon,
+    user: auth.currentUser.displayName
+  });
+
+  alert("Post Published!");
+  location.reload();
+});
+
+</script>
+
+</body>
+</html>
