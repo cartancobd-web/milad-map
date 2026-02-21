@@ -1,9 +1,10 @@
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
+  apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
+  authDomain: "milad-4727b.firebaseapp.com",
+  projectId: "milad-4727b",
 };
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+
 const db = firebase.firestore();
