@@ -10,17 +10,7 @@
 
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f9f4;}
-header{
-  background:#0a5c36;
-  color:white;
-  padding:15px;
-  text-align:center;
-  font-size:18px;
-}
-header a{
-  text-decoration:none;
-  color:white;
-}
+header{background:#0a5c36;color:white;padding:15px;text-align:center;font-size:18px;}
 button{background:#0a5c36;color:white;padding:10px;border:none;border-radius:8px;width:100%;margin-top:8px;}
 input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;}
 #map{height:300px;margin-top:10px;}
@@ -29,41 +19,42 @@ input{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid 
 .bottom button{flex:1;border-radius:0;}
 .userBar{background:#e8f5e9;padding:8px;text-align:center;font-size:14px;}
 .logoutBtn{background:red;margin-top:5px;}
-.desc{margin-top:5px;font-size:14px;color:#333;}
 .deleteBtn{background:#b71c1c;margin-top:5px;}
+.desc{margin-top:5px;font-size:14px;color:#333;}
 .filterBox{padding:10px;background:#fff;}
+#suggestions button{background:#eee;color:#000;}
 </style>
 </head>
 
 <body>
 
-<header>
-  <a href="https://cartancobd-web.github.io/milad-map/">
-    🕌 Milad Finder Bangladesh
-  </a>
-</header>
+<header>🕌 Milad Finder Bangladesh</header>
 
 <div id="loginSection">
 <button onclick="googleLogin()">Login With Google</button>
 </div>
 
-<div id="main" style="display:none;padding-bottom:60px;">
+<div id="main" style="padding-bottom:60px;">
 
-<div class="userBar">
+<div class="userBar" id="userBar" style="display:none;">
 👤 <span id="userName"></span>
 <button class="logoutBtn" onclick="logout()">Logout</button>
 </div>
 
-<div id="createTab">
+<div id="createTab" style="display:none;">
 <h3>Create Milad</h3>
+
 <input type="text" id="mosqueName" placeholder="Mosque Name"/>
+<div id="suggestions"></div>
+
+<input type="text" id="address" placeholder="Address Auto"/>
 <input type="date" id="date"/>
 <input type="time" id="time"/>
 <input type="text" id="description" placeholder="Description"/>
 <button onclick="createMilad()">Create Milad</button>
 </div>
 
-<div id="checkTab" style="display:none;">
+<div id="checkTab">
 <h3>Milad Check</h3>
 
 <div class="filterBox">
@@ -89,12 +80,12 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signO
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyAETli2UtjPzEU5xd9U6_W7xeJxBGq3xV8",
-authDomain: "milad-4727b.firebaseapp.com",
-projectId: "milad-4727b",
-storageBucket: "milad-4727b.firebasestorage.app",
-messagingSenderId: "1088600725533",
-appId: "1:1088600725533:web:f4bdacb68606f846590ef4",
+apiKey: "YOUR_KEY",
+authDomain: "YOUR_DOMAIN",
+projectId: "YOUR_ID",
+storageBucket: "YOUR_BUCKET",
+messagingSenderId: "YOUR_MSG_ID",
+appId: "YOUR_APP_ID",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -107,23 +98,25 @@ let markers=[];
 /* LOCATION */
 window.addEventListener("load",()=>{
 if(navigator.geolocation){
-navigator.geolocation.getCurrentPosition(pos=>{
+navigator.geolocation.getCurrentPosition(async pos=>{
 userLat=pos.coords.latitude;
 userLng=pos.coords.longitude;
 loadMilads();
+loadNearbyMosques();
+getAddress();
 });
 }
 });
 
-/* LOGIN STATE */
+/* AUTO LOGIN STATE */
 onAuthStateChanged(auth,(user)=>{
 if(user){
 loginSection.style.display="none";
-main.style.display="block";
+userBar.style.display="block";
 userName.innerText=user.displayName;
 }else{
 loginSection.style.display="block";
-main.style.display="none";
+userBar.style.display="none";
 }
 });
 
@@ -138,6 +131,19 @@ window.logout=async function(){
 await signOut(auth);
 };
 
+/* TAB */
+window.showCreate=function(){
+if(!auth.currentUser){alert("Login Required");return;}
+createTab.style.display="block";
+checkTab.style.display="none";
+}
+
+window.showCheck=function(){
+createTab.style.display="none";
+checkTab.style.display="block";
+loadMilads();
+}
+
 /* CREATE */
 window.createMilad=async function(){
 const user=auth.currentUser;
@@ -145,6 +151,7 @@ if(!user){alert("Login Required");return;}
 
 await addDoc(collection(db,"milads"),{
 mosque:mosqueName.value,
+address:address.value,
 date:date.value,
 time:time.value,
 desc:description.value,
@@ -155,20 +162,9 @@ user:user.displayName,
 uid:user.uid
 });
 alert("Milad Posted");
-};
-
-/* TAB */
-window.showCreate=function(){
-createTab.style.display="block";
-checkTab.style.display="none";
-}
-window.showCheck=function(){
-createTab.style.display="none";
-checkTab.style.display="block";
-loadMilads();
 }
 
-/* LOAD */
+/* LOAD MILADS (Login ছাড়া কাজ করবে) */
 window.loadMilads=async function(){
 const snapshot=await getDocs(collection(db,"milads"));
 list.innerHTML="";
@@ -180,22 +176,23 @@ const distance=getDistance(userLat,userLng,data.lat,data.lng);
 
 if(distance<=5 && (!selectedDate || selectedDate===data.date)){
 
-let deleteButton="";
+let deleteBtn="";
 if(auth.currentUser && auth.currentUser.uid===data.uid){
-deleteButton=`<button class="deleteBtn" onclick="deleteMilad('${docSnap.id}')">Delete</button>`;
+deleteBtn=`<button class="deleteBtn" onclick="deleteMilad('${docSnap.id}')">Delete</button>`;
 }
 
 const div=document.createElement("div");
 div.className="card";
 div.innerHTML=`
 <b>${data.mosque}</b><br>
+📍 ${data.address}<br>
 📅 ${data.date} ⏰ ${data.time}<br>
 👤 ${data.user}<br>
-📍 ${distance.toFixed(2)} KM<br>
+📏 ${distance.toFixed(2)} KM<br>
 <div class="desc">${data.desc}</div>
 ❤️ ${data.likes}
 <button onclick="likeMilad('${docSnap.id}',${data.likes})">Like</button>
-${deleteButton}
+${deleteBtn}
 `;
 list.appendChild(div);
 }
@@ -213,13 +210,11 @@ loadMilads();
 
 /* LIKE */
 window.likeMilad=async function(id,current){
-const user=auth.currentUser;
-if(!user){alert("Login Required");return;}
-const likeId=id+"_"+user.uid;
+if(!auth.currentUser){alert("Login Required");return;}
+const likeId=id+"_"+auth.currentUser.uid;
 const likeRef=doc(db,"likes",likeId);
-const likeSnap=await getDoc(likeRef);
-if(likeSnap.exists()){alert("Already Liked");return;}
-await setDoc(likeRef,{miladId:id,userId:user.uid});
+if((await getDoc(likeRef)).exists()){alert("Already Liked");return;}
+await setDoc(likeRef,{miladId:id});
 await updateDoc(doc(db,"milads",id),{likes:current+1});
 loadMilads();
 };
@@ -252,17 +247,34 @@ Math.sin(dLon/2)**2;
 return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-</script>
+/* MOSQUE AUTO SUGGEST */
+async function loadNearbyMosques(){
+const response=await fetch(
+`https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${userLat},${userLng});out;`
+);
+const data=await response.json();
+suggestions.innerHTML="";
+data.elements.slice(0,8).forEach(m=>{
+if(m.tags && m.tags.name){
+const btn=document.createElement("button");
+btn.innerText=m.tags.name;
+btn.onclick=()=>{
+mosqueName.value=m.tags.name;
+suggestions.innerHTML="";
+};
+suggestions.appendChild(btn);
+}
+});
+}
 
-<footer style="text-align:center;padding:20px;">
-Created By Tariqul Islam<br>
-<a href="https://facebook.com/3tariqul" target="_blank">Facebook Check</a>
-</footer>
+/* AUTO ADDRESS */
+async function getAddress(){
+const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLng}`);
+const data=await res.json();
+address.value=data.display_name;
+}
+
+</script>
 
 </body>
 </html>
-
-
-
-
-
